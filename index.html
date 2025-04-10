@@ -40,8 +40,13 @@
   <button id="spinBtn">Draai het wiel!</button>
   <p id="result"></p>
   
+  <!-- Voeg het audio-element toe. Zorg dat spin.mp3 beschikbaar is in je projectmap -->
+  <audio id="spinSound" src="spin.mp3" preload="auto"></audio>
+  
   <script>
     document.addEventListener("DOMContentLoaded", function() {
+      console.log("DOM geladen en script gestart");
+      
       // Lijst met de 23 namen
       const names = [
         "BERT BUTENAERS",
@@ -81,6 +86,7 @@
       // Functie om het wiel te tekenen
       function drawWheel() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
         for (let i = 0; i < numSectors; i++) {
           const startAngle = currentRotation + i * sliceAngle;
           const endAngle = startAngle + sliceAngle;
@@ -88,3 +94,78 @@
           ctx.beginPath();
           ctx.moveTo(centerX, centerY);
           ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+          ctx.closePath();
+          ctx.fill();
+          
+          // Tekst tekenen in het midden van de sector
+          ctx.save();
+          ctx.translate(centerX, centerY);
+          const textAngle = startAngle + sliceAngle / 2;
+          ctx.rotate(textAngle);
+          ctx.textAlign = "right";
+          ctx.fillStyle = "#fff";
+          ctx.font = "bold 14px sans-serif";
+          ctx.fillText(names[i], radius - 10, 5);
+          ctx.restore();
+        }
+        // Teken de pointer (rode driehoek) bovenaan
+        ctx.fillStyle = "red";
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY - radius + 10);
+        ctx.lineTo(centerX - 10, centerY - radius + 25);
+        ctx.lineTo(centerX + 10, centerY - radius + 25);
+        ctx.closePath();
+        ctx.fill();
+      }
+      
+      // Eerste tekening van het wiel
+      drawWheel();
+      
+      // Klik op de knop triggert de animatie en het geluid
+      document.getElementById("spinBtn").addEventListener("click", function() {
+        this.disabled = true;
+        document.getElementById("result").textContent = "";
+        
+        // Start het geluid
+        const spinSound = document.getElementById("spinSound");
+        spinSound.currentTime = 0;
+        spinSound.play();
+        
+        const extraDegrees = Math.floor(Math.random() * 360);
+        const totalDegrees = 360 * (3 + Math.random() * 3) + extraDegrees;
+        const totalRotation = totalDegrees * Math.PI / 180;
+        
+        const duration = 4000;
+        const startTime = performance.now();
+        const initialRotation = currentRotation;
+        
+        function animate(currentTime) {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const easeOut = 1 - Math.pow(1 - progress, 3);
+          currentRotation = initialRotation + totalRotation * easeOut;
+          drawWheel();
+          if (progress < 1) {
+            requestAnimationFrame(animate);
+          } else {
+            // Stop het geluid en reset
+            spinSound.pause();
+            spinSound.currentTime = 0;
+            
+            let normalizedRotation = currentRotation % (2 * Math.PI);
+            if (normalizedRotation < 0) {
+              normalizedRotation += 2 * Math.PI;
+            }
+            let pointerAngle = 3 * Math.PI / 2;
+            let winningAngle = ((pointerAngle - normalizedRotation) + 2 * Math.PI) % (2 * Math.PI);
+            let winningIndex = Math.floor(winningAngle / sliceAngle) % numSectors;
+            document.getElementById("result").textContent = "Gewonnen: " + names[winningIndex];
+            document.getElementById("spinBtn").disabled = false;
+          }
+        }
+        requestAnimationFrame(animate);
+      });
+    });
+  </script>
+</body>
+</html>
